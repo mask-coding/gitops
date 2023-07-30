@@ -9,8 +9,9 @@ pipeline {
     }
     stage('k8s deploy'){
       steps {
-        kubernetesDeploy(kubeconfigId: 'kubeconfig',
-                         configs: '*.yaml')
+        withKubeConfig([credentialsId: 'cp-k8s', serverUrl: 'https://192.168.1.10:6443']) {
+          sh 'kubectl apply -f deployment.yaml'
+        }
       }
     }    
   }
