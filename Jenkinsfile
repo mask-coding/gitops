@@ -2,11 +2,11 @@ pipeline {
   agent any
   stages {
     stage('deploy start') {
-      steps { //+추가됨: 배포 작업 이전에 배포 시작 알림 메시지를 슬랙 채널로 보냄
+      steps {
         slackSend(message: "Deploy ${env.BUILD_NUMBER} Started"
         , color: 'good', tokenCredentialId: 'slack-key')
       }
-    }      
+    }
 
     stage('git pull') {
       steps {
@@ -22,12 +22,18 @@ pipeline {
       }
     }
 
-    stage('deploy end') {
-      steps { //+추가됨: 배포 작업 이후에 배포 완료 알림 메시지를 슬랙 채널로 보냄
+    stage('send diff') {
+      steps {
+        script { //+추가됨: 이전 배포와 현재 배포의 코드 변동 사항을 html로 만듦
+          def publisher = LastChanges.getLastChangesPublisher "PREVIOUS_REVISION", "SIDE", "LINE", true, true, "", "", "", "", ""
+          publisher.publishLastChanges()
+          def htmlDiff = publisher.getHtmlDiff()
+          writeFile file: "deploy-diff-${env.BUILD_NUMBER}.html", text: htmlDiff
+        } // +추가됨: 변경사항을 한눈에 확인할 수 있는 주소를 메시지로 전달
         slackSend(message: """${env.JOB_NAME} #${env.BUILD_NUMBER} End
-        """, color: 'good', tokenCredentialId: 'slack-key')
+        (<${env.BUILD_URL}/last-changes|Check Last changed>)"""
+        , color: 'good', tokenCredentialId: 'slack-key')
       }
     }
-
   }
 }
